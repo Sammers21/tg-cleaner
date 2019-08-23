@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * Example class for TDLib usage from Java.
  */
-public final class Example {
+public final class App {
     private static Client client = null;
 
     private static TdApi.AuthorizationState authorizationState = null;
@@ -85,9 +85,9 @@ public final class Example {
 
     private static void onAuthorizationStateUpdated(TdApi.AuthorizationState authorizationState) {
         if (authorizationState != null) {
-            Example.authorizationState = authorizationState;
+            App.authorizationState = authorizationState;
         }
-        switch (Example.authorizationState.getConstructor()) {
+        switch (App.authorizationState.getConstructor()) {
             case TdApi.AuthorizationStateWaitTdlibParameters.CONSTRUCTOR:
                 TdApi.TdlibParameters parameters = new TdApi.TdlibParameters();
                 parameters.databaseDirectory = "tdlib";
@@ -145,7 +145,7 @@ public final class Example {
                 }
                 break;
             default:
-                System.err.println("Unsupported authorization state:" + newLine + Example.authorizationState);
+                System.err.println("Unsupported authorization state:" + newLine + App.authorizationState);
         }
     }
 
