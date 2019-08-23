@@ -1,0 +1,18 @@
+plugins {
+    // Apply the java plugin to add support for Java
+    id 'java'
+
+    // Apply the application plugin to add support for building an application
+    id 'application'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile files('lib/tdlib.jar')
+}
+
+// Define the main class for the application
+mainClassName = 'io.github.sammers21.tg.cleaner.App'
