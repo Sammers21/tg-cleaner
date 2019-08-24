@@ -53,6 +53,8 @@ public final class App {
     private static final String commandsLine = "Enter command (gcs - GetChats, gc <chatId> - GetChat, me - GetMe, sm <chatId> <message> - SendMessage, lo - LogOut, q - Quit): ";
     private static volatile String currentPrompt = null;
 
+    private static final CleanConfig cleanConfig = new CleanConfig();
+
     static {
         System.loadLibrary("tdjni");
     }
@@ -92,15 +94,14 @@ public final class App {
                 TdApi.TdlibParameters parameters = new TdApi.TdlibParameters();
                 parameters.databaseDirectory = "tdlib";
                 parameters.useMessageDatabase = true;
-                parameters.useSecretChats = true;
-                parameters.apiId = 94575;
-                parameters.apiHash = "a3406de8d171bb422bb6ddf3bbd800e2";
+                parameters.useSecretChats = false;
+                parameters.apiId = 949093;
+                parameters.apiHash = "ee530101b3b27560755a8261753f5f7b";
                 parameters.systemLanguageCode = "en";
-                parameters.deviceModel = "Desktop";
-                parameters.systemVersion = "Unknown";
-                parameters.applicationVersion = "1.0";
+                parameters.deviceModel = "Server";
+                parameters.systemVersion = "Linux";
+                parameters.applicationVersion = "0.1.beta";
                 parameters.enableStorageOptimizer = true;
-
                 client.send(new TdApi.SetTdlibParameters(parameters), new AuthorizationRequestHandler());
                 break;
             case TdApi.AuthorizationStateWaitEncryptionKey.CONSTRUCTOR:
@@ -141,7 +142,7 @@ public final class App {
             case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
                 print("Closed");
                 if (!quiting) {
-                    client = Client.create(new UpdatesHandler(), null, null); // recreate client after previous has closed
+                    client = Client.create(new UpdatesHandler(cleanConfig), null, null); // recreate client after previous has closed
                 }
                 break;
             default:
@@ -290,7 +291,7 @@ public final class App {
         }
 
         // create client
-        client = Client.create(new UpdatesHandler(), null, null);
+        client = Client.create(new UpdatesHandler(cleanConfig), null, null);
 
         // test Client.execute
         defaultHandler.onResult(Client.execute(new TdApi.GetTextEntities("@telegram /test_command https://telegram.org telegram.me @gif @test")));
@@ -348,6 +349,13 @@ public final class App {
     }
 
     private static class UpdatesHandler implements Client.ResultHandler {
+
+        private final CleanConfig cleanConfig;
+
+        private UpdatesHandler(CleanConfig cleanConfig) {
+            this.cleanConfig = cleanConfig;
+        }
+
         @Override
         public void onResult(TdApi.Object object) {
             switch (object.getConstructor()) {
@@ -359,7 +367,7 @@ public final class App {
                     TdApi.UpdateUser updateUser = (TdApi.UpdateUser) object;
                     users.put(updateUser.user.id, updateUser.user);
                     break;
-                case TdApi.UpdateUserStatus.CONSTRUCTOR:  {
+                case TdApi.UpdateUserStatus.CONSTRUCTOR: {
                     TdApi.UpdateUserStatus updateUserStatus = (TdApi.UpdateUserStatus) object;
                     TdApi.User user = users.get(updateUserStatus.userId);
                     synchronized (user) {
@@ -529,6 +537,22 @@ public final class App {
                 case TdApi.UpdateSupergroupFullInfo.CONSTRUCTOR:
                     TdApi.UpdateSupergroupFullInfo updateSupergroupFullInfo = (TdApi.UpdateSupergroupFullInfo) object;
                     supergroupsFullInfo.put(updateSupergroupFullInfo.supergroupId, updateSupergroupFullInfo.supergroupFullInfo);
+                    break;
+                case TdApi.UpdateNewMessage.CONSTRUCTOR:
+                    TdApi.UpdateNewMessage newMessage = (TdApi.UpdateNewMessage) object;
+                    System.out.println("New message: " + newMessage.message.content);
+                    switch (newMessage.message.content.getConstructor()) {
+                        case TdApi.MessageSticker.CONSTRUCTOR:
+                            TdApi.MessageSticker sticker = (TdApi.MessageSticker) newMessage.message.content;
+                            if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
+                                client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
+                                    System.out.println("res received:" + res);
+                                });
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                     break;
                 default:
                     // print("Unsupported update:" + newLine + object);

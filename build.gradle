@@ -1,8 +1,5 @@
 plugins {
-    // Apply the java plugin to add support for Java
     id 'java'
-
-    // Apply the application plugin to add support for building an application
     id 'application'
 }
 
@@ -10,9 +7,17 @@ repositories {
     jcenter()
 }
 
+mainClassName = 'io.github.sammers21.tg.cleaner.App'
+
 dependencies {
     compile files('lib/tdlib.jar')
 }
 
-// Define the main class for the application
-mainClassName = 'io.github.sammers21.tg.cleaner.App'
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+    baseName = 'all-in-one-jar'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
