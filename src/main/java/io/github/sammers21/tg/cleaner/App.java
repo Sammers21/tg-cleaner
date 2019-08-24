@@ -546,10 +546,26 @@ public final class App {
                             TdApi.MessageSticker sticker = (TdApi.MessageSticker) newMessage.message.content;
                             if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
                                 client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
-                                    System.out.println("res received:" + res);
+                                    System.out.println(String.format("Sticker set=%d emoji=%s is ignored: " + res, sticker.sticker.setId, sticker.sticker.emoji));
                                 });
+                            } else {
+                                System.out.println(String.format("Sticker set=%d emoji=%s is not ignored ", sticker.sticker.setId, sticker.sticker.emoji));
                             }
                             break;
+
+                        case TdApi.MessageText.CONSTRUCTOR:
+                            TdApi.MessageText text = (TdApi.MessageText) newMessage.message.content;
+                            long replyToMessageId = newMessage.message.replyToMessageId;
+                            if (replyToMessageId != 0 && text.text.text.equals("#tgc_ignore")) {
+                                client.send(new TdApi.GetMessage(newMessage.message.chatId, replyToMessageId), response -> {
+                                    TdApi.Message message = (TdApi.Message) response;
+                                    TdApi.MessageContent content = message.content;
+                                    if (content.getConstructor() == TdApi.MessageSticker.CONSTRUCTOR) {
+                                        TdApi.MessageSticker messageSticker = (TdApi.MessageSticker) content;
+                                        cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
+                                    }
+                                });
+                            }
                         default:
                             break;
                     }
