@@ -8,8 +8,17 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class CleanConfig {
 
+    private Set<Long> textOnlyChats = new HashSet<>();
     private Set<Long> ignoredPacks = new ConcurrentSkipListSet<>();
     private Map<Long, Set<String>> ignoredSTickers = new ConcurrentHashMap<>();
+
+    public void addTextOnlyChat(Long chat) {
+        textOnlyChats.add(chat);
+    }
+
+    public boolean isTextOnlyChat(Long chatId) {
+        return textOnlyChats.contains(chatId);
+    }
 
     public void ignoreSticker(Long packId, String emoji) {
         ignoredSTickers.compute(packId, (pack, strings) -> {

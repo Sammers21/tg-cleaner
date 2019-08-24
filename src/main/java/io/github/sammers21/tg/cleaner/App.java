@@ -10,9 +10,13 @@ import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +60,18 @@ public final class App {
     private static final CleanConfig cleanConfig = new CleanConfig();
 
     static {
-        System.loadLibrary("tdjni");
+        try {
+            Path tempDirWithPrefix = Files.createTempDirectory("tempload");
+            File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
+            if (!file.exists()) {
+                InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
+                Files.copy(link, file.getAbsoluteFile().toPath());
+            }
+            System.out.println("Load jni lib from " + file.getAbsolutePath());
+            System.load(file.getAbsolutePath());
+        } catch (IOException e) {
+            throw new IllegalStateException("JNI lib load error");
+        }
     }
 
     private static void print(String str) {
@@ -540,34 +555,45 @@ public final class App {
                     break;
                 case TdApi.UpdateNewMessage.CONSTRUCTOR:
                     TdApi.UpdateNewMessage newMessage = (TdApi.UpdateNewMessage) object;
-                    System.out.println("New message: " + newMessage.message.content);
-                    switch (newMessage.message.content.getConstructor()) {
-                        case TdApi.MessageSticker.CONSTRUCTOR:
-                            TdApi.MessageSticker sticker = (TdApi.MessageSticker) newMessage.message.content;
-                            if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
-                                client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
-                                    System.out.println(String.format("Sticker set=%d emoji=%s is ignored: " + res, sticker.sticker.setId, sticker.sticker.emoji));
-                                });
-                            } else {
-                                System.out.println(String.format("Sticker set=%d emoji=%s is not ignored ", sticker.sticker.setId, sticker.sticker.emoji));
-                            }
-                            break;
+                    TdApi.MessageContent msgContent = newMessage.message.content;
+                    System.out.println("New message: " + msgContent);
 
-                        case TdApi.MessageText.CONSTRUCTOR:
-                            TdApi.MessageText text = (TdApi.MessageText) newMessage.message.content;
-                            long replyToMessageId = newMessage.message.replyToMessageId;
-                            if (replyToMessageId != 0 && text.text.text.equals("#tgc_ignore")) {
-                                client.send(new TdApi.GetMessage(newMessage.message.chatId, replyToMessageId), response -> {
-                                    TdApi.Message message = (TdApi.Message) response;
-                                    TdApi.MessageContent content = message.content;
-                                    if (content.getConstructor() == TdApi.MessageSticker.CONSTRUCTOR) {
-                                        TdApi.MessageSticker messageSticker = (TdApi.MessageSticker) content;
-                                        cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
-                                    }
-                                });
-                            }
-                        default:
-                            break;
+                    if (cleanConfig.isTextOnlyChat(newMessage.message.chatId) && msgContent.getConstructor() != TdApi.MessageText.CONSTRUCTOR) {
+                        client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
+                            System.out.println("Message has been deleted");
+                        });
+                    } else {
+                        switch (msgContent.getConstructor()) {
+                            case TdApi.MessagePhoto.CONSTRUCTOR:
+                            case TdApi.MessageSticker.CONSTRUCTOR:
+                                TdApi.MessageSticker sticker = (TdApi.MessageSticker) msgContent;
+                                if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
+                                    client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
+                                        System.out.println(String.format("Sticker set=%d emoji=%s is ignored: " + res, sticker.sticker.setId, sticker.sticker.emoji));
+                                    });
+                                } else {
+                                    System.out.println(String.format("Sticker set=%d emoji=%s is not ignored ", sticker.sticker.setId, sticker.sticker.emoji));
+                                }
+                                break;
+
+                            case TdApi.MessageText.CONSTRUCTOR:
+                                TdApi.MessageText text = (TdApi.MessageText) msgContent;
+                                long replyToMessageId = newMessage.message.replyToMessageId;
+                                if (replyToMessageId != 0 && text.text.text.equals("#tgc_ignore")) {
+                                    client.send(new TdApi.GetMessage(newMessage.message.chatId, replyToMessageId), response -> {
+                                        TdApi.Message message = (TdApi.Message) response;
+                                        TdApi.MessageContent content = message.content;
+                                        if (content.getConstructor() == TdApi.MessageSticker.CONSTRUCTOR) {
+                                            TdApi.MessageSticker messageSticker = (TdApi.MessageSticker) content;
+                                            cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
+                                        }
+                                    });
+                                } else if (text.text.text.equals("#tgc_allow_text_only")) {
+                                    cleanConfig.addTextOnlyChat(newMessage.message.chatId);
+                                }
+                            default:
+                                break;
+                        }
                     }
                     break;
                 default:
