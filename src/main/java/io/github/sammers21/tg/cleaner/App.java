@@ -10,13 +10,9 @@ import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,13 +20,15 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Pattern;
 
 /**
  * Example class for TDLib usage from Java.
  */
 public final class App {
     private static Client client = null;
+
+    public static String TGC_IGNORE = "#tgc_ignore";
+    public static String TGC_ALLOW_TEXT_ONLY = "#tgc_allow_text_only";
 
     private static TdApi.AuthorizationState authorizationState = null;
     private static volatile boolean haveAuthorization = false;
@@ -135,6 +133,8 @@ public final class App {
                 } finally {
                     authorizationLock.unlock();
                 }
+                fetchConfig(TGC_IGNORE, 0, 0, 0);
+                fetchConfig(TGC_ALLOW_TEXT_ONLY, 0, 0, 0);
                 break;
             case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR:
                 haveAuthorization = false;
@@ -319,6 +319,27 @@ public final class App {
         }
     }
 
+    private static void fetchConfig(String q, int offsetDate, long chat_id, long message_id) {
+        client.send(new TdApi.SearchMessages(q, offsetDate, chat_id, message_id, 100), object -> {
+            TdApi.Messages messages = (TdApi.Messages) object;
+            int length = messages.messages.length;
+            System.out.println("Fetched messages:" + length);
+            fillWithMessages(messages);
+            if (length != 0) {
+                TdApi.Message lastMsg = messages.messages[messages.totalCount - 1];
+                fetchConfig(q, lastMsg.date, lastMsg.chatId, lastMsg.id);
+            } else {
+                System.out.println("Not fetching more messages");
+            }
+        });
+    }
+
+    private static void fillWithMessages(TdApi.Messages messages) {
+        for (TdApi.Message message : messages.messages) {
+            handleMessage(message);
+        }
+    }
+
     private static class OrderedChat implements Comparable<OrderedChat> {
         final long order;
         final long chatId;
@@ -353,7 +374,51 @@ public final class App {
         }
     }
 
+    private static void handleMessage(TdApi.Message msg) {
+        TdApi.MessageContent msgContent = msg.content;
+        System.out.println("New message: " + msgContent);
+
+        if (cleanConfig.isTextOnlyChat(msg.chatId) && msgContent.getConstructor() != TdApi.MessageText.CONSTRUCTOR) {
+            client.send(new TdApi.DeleteMessages(msg.chatId, new long[]{msg.id}, true), res -> {
+                System.out.println("Message has been deleted");
+            });
+        } else {
+            switch (msgContent.getConstructor()) {
+                case TdApi.MessagePhoto.CONSTRUCTOR:
+                case TdApi.MessageSticker.CONSTRUCTOR:
+                    TdApi.MessageSticker sticker = (TdApi.MessageSticker) msgContent;
+                    if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
+                        client.send(new TdApi.DeleteMessages(msg.chatId, new long[]{msg.id}, true), res -> {
+                            System.out.println(String.format("Sticker set=%d emoji=%s is ignored: " + res, sticker.sticker.setId, sticker.sticker.emoji));
+                        });
+                    } else {
+                        System.out.println(String.format("Sticker set=%d emoji=%s is not ignored ", sticker.sticker.setId, sticker.sticker.emoji));
+                    }
+                    break;
+
+                case TdApi.MessageText.CONSTRUCTOR:
+                    TdApi.MessageText text = (TdApi.MessageText) msgContent;
+                    long replyToMessageId = msg.replyToMessageId;
+                    if (replyToMessageId != 0 && text.text.text.equals("#tgc_ignore")) {
+                        client.send(new TdApi.GetMessage(msg.chatId, replyToMessageId), response -> {
+                            TdApi.Message message = (TdApi.Message) response;
+                            TdApi.MessageContent content = message.content;
+                            if (content.getConstructor() == TdApi.MessageSticker.CONSTRUCTOR) {
+                                TdApi.MessageSticker messageSticker = (TdApi.MessageSticker) content;
+                                cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
+                            }
+                        });
+                    } else if (text.text.text.equals("#tgc_allow_text_only")) {
+                        cleanConfig.addTextOnlyChat(msg.chatId);
+                    }
+                default:
+                    break;
+            }
+        }
+    }
+
     private static class UpdatesHandler implements Client.ResultHandler {
+
 
         private final CleanConfig cleanConfig;
 
@@ -545,46 +610,8 @@ public final class App {
                     break;
                 case TdApi.UpdateNewMessage.CONSTRUCTOR:
                     TdApi.UpdateNewMessage newMessage = (TdApi.UpdateNewMessage) object;
-                    TdApi.MessageContent msgContent = newMessage.message.content;
-                    System.out.println("New message: " + msgContent);
-
-                    if (cleanConfig.isTextOnlyChat(newMessage.message.chatId) && msgContent.getConstructor() != TdApi.MessageText.CONSTRUCTOR) {
-                        client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
-                            System.out.println("Message has been deleted");
-                        });
-                    } else {
-                        switch (msgContent.getConstructor()) {
-                            case TdApi.MessagePhoto.CONSTRUCTOR:
-                            case TdApi.MessageSticker.CONSTRUCTOR:
-                                TdApi.MessageSticker sticker = (TdApi.MessageSticker) msgContent;
-                                if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
-                                    client.send(new TdApi.DeleteMessages(newMessage.message.chatId, new long[]{newMessage.message.id}, true), res -> {
-                                        System.out.println(String.format("Sticker set=%d emoji=%s is ignored: " + res, sticker.sticker.setId, sticker.sticker.emoji));
-                                    });
-                                } else {
-                                    System.out.println(String.format("Sticker set=%d emoji=%s is not ignored ", sticker.sticker.setId, sticker.sticker.emoji));
-                                }
-                                break;
-
-                            case TdApi.MessageText.CONSTRUCTOR:
-                                TdApi.MessageText text = (TdApi.MessageText) msgContent;
-                                long replyToMessageId = newMessage.message.replyToMessageId;
-                                if (replyToMessageId != 0 && text.text.text.equals("#tgc_ignore")) {
-                                    client.send(new TdApi.GetMessage(newMessage.message.chatId, replyToMessageId), response -> {
-                                        TdApi.Message message = (TdApi.Message) response;
-                                        TdApi.MessageContent content = message.content;
-                                        if (content.getConstructor() == TdApi.MessageSticker.CONSTRUCTOR) {
-                                            TdApi.MessageSticker messageSticker = (TdApi.MessageSticker) content;
-                                            cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
-                                        }
-                                    });
-                                } else if (text.text.text.equals("#tgc_allow_text_only")) {
-                                    cleanConfig.addTextOnlyChat(newMessage.message.chatId);
-                                }
-                            default:
-                                break;
-                        }
-                    }
+                    TdApi.Message msg = newMessage.message;
+                    handleMessage(msg);
                     break;
                 default:
                     // print("Unsupported update:" + newLine + object);
