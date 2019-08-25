@@ -21,7 +21,7 @@ task fatJar(type: Jar) {
     manifest {
         attributes 'Main-Class': mainClassName
     }
-    baseName = 'all-in-one-jar'
+    baseName = 'tg-cleaner'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
