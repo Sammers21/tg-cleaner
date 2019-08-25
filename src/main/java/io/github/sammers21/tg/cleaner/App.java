@@ -61,18 +61,7 @@ public final class App {
     private static final CleanConfig cleanConfig = new CleanConfig();
 
     static {
-        try {
-            Path tempDirWithPrefix = Files.createTempDirectory("tempload");
-            File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
-            if (!file.exists()) {
-                InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
-                Files.copy(link, file.getAbsoluteFile().toPath());
-            }
-            System.out.println("Load jni lib from " + file.getAbsolutePath());
-            System.load(file.getAbsolutePath());
-        } catch (IOException e) {
-            throw new IllegalStateException("JNI lib load error");
-        }
+        System.loadLibrary("tdjni");
     }
 
     private static void print(String str) {
