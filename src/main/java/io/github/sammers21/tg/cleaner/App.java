@@ -10,9 +10,13 @@ import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,7 +63,25 @@ public final class App {
     private static final CleanConfig cleanConfig = new CleanConfig();
 
     static {
-        System.loadLibrary("tdjni");
+        try {
+            System.loadLibrary("tdjni");
+        } catch (UnsatisfiedLinkError linkError) {
+            System.out.println("Failed to load system lib: tdjni, loading from jar");
+            try {
+                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
+                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
+                if (!file.exists()) {
+                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
+                    Files.copy(link, file.getAbsoluteFile().toPath());
+                }
+                System.out.println("Load jni lib from " + file.getAbsolutePath());
+                System.load(file.getAbsolutePath());
+            } catch (IOException e) {
+                throw new IllegalStateException("Can't unpack native part", e);
+            } catch (UnsatisfiedLinkError e) {
+                throw new IllegalStateException("Couldn't load library from jar", e);
+            }
+        }
     }
 
     private static void print(String str) {
