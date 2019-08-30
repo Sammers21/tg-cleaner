@@ -1,6 +1,13 @@
 # tg-cleaner
 Automatically cleans up things you don't want to appear in a telegram chat 
 
+# Build and run instructions
+
+1. Build tdlib, by following steps from [the instruction](https://tdlib.github.io/td/build.html?language=Java)
+2. Make it accessible in you PATH
+3. Build the actual CLI programm: `./gradlew fatJar`
+4. Run resulted `.jar` file: `java -jar build/libs/tg-cleaner.jar` 
+
 
 # Features
 
