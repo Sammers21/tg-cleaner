@@ -7,7 +7,8 @@ Automatically cleans up things you don't want to appear in a telegram chat
 2. Make it accessible in you PATH
 3. Build the actual CLI programm: `./gradlew fatJar`
 4. Run resulted `.jar` file: `java -jar build/libs/tg-cleaner.jar` 
-
+5. Input your telephone number and received code.
+6. Now listed below features will work.
 
 # Features
 
