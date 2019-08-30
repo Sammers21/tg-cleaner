@@ -10,4 +10,4 @@ Automatically cleans up things you don't want to appear in a telegram chat
 
 `#tgc_allow_text_only` - ignores anything other then a text message
 
-![allow_text_demo](https://user-images.githubusercontent.com/16746106/64022906-dcd78200-cb3f-11e9-9e61-5b282a5337c2.gif
+![allow_text_demo](https://user-images.githubusercontent.com/16746106/64022906-dcd78200-cb3f-11e9-9e61-5b282a5337c2.gif)
