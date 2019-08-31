@@ -57,6 +57,7 @@ public final class App {
                     InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
                     Files.copy(link, file.getAbsoluteFile().toPath());
                 }
+                file.deleteOnExit();
                 System.out.println("Load jni lib from " + file.getAbsolutePath());
                 System.load(file.getAbsolutePath());
             } catch (IOException e) {
