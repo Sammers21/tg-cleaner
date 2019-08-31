@@ -137,21 +137,12 @@ public final class App {
             case TdApi.AuthorizationStateClosed.CONSTRUCTOR:
                 print("Closed");
                 if (!quiting) {
-                    client = Client.create(new UpdatesHandler(cleanConfig), null, null); // recreate client after previous has closed
+                    client = Client.create(new UpdatesHandler(), null, null); // recreate client after previous has closed
                 }
                 break;
             default:
                 System.err.println("Unsupported authorization state:" + newLine + App.authorizationState);
         }
-    }
-
-    private static int toInt(String arg) {
-        int result = 0;
-        try {
-            result = Integer.parseInt(arg);
-        } catch (NumberFormatException ignored) {
-        }
-        return result;
     }
 
     private static String promptString(String prompt) {
@@ -198,7 +189,7 @@ public final class App {
         }
 
         // create client
-        client = Client.create(new UpdatesHandler(cleanConfig), null, null);
+        client = Client.create(new UpdatesHandler(), null, null);
 
         // test Client.execute
         defaultHandler.onResult(Client.execute(new TdApi.GetTextEntities("@telegram /test_command https://telegram.org telegram.me @gif @test")));
@@ -236,33 +227,6 @@ public final class App {
     private static void fillWithMessages(TdApi.Messages messages) {
         for (TdApi.Message message : messages.messages) {
             handleMessage(message);
-        }
-    }
-
-    private static class OrderedChat implements Comparable<OrderedChat> {
-        final long order;
-        final long chatId;
-
-        OrderedChat(long order, long chatId) {
-            this.order = order;
-            this.chatId = chatId;
-        }
-
-        @Override
-        public int compareTo(OrderedChat o) {
-            if (this.order != o.order) {
-                return o.order < this.order ? -1 : 1;
-            }
-            if (this.chatId != o.chatId) {
-                return o.chatId < this.chatId ? -1 : 1;
-            }
-            return 0;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            OrderedChat o = (OrderedChat) obj;
-            return this.order == o.order && this.chatId == o.chatId;
         }
     }
 
@@ -316,13 +280,6 @@ public final class App {
 
     private static class UpdatesHandler implements Client.ResultHandler {
 
-
-        private final CleanConfig cleanConfig;
-
-        private UpdatesHandler(CleanConfig cleanConfig) {
-            this.cleanConfig = cleanConfig;
-        }
-
         @Override
         public void onResult(TdApi.Object object) {
             switch (object.getConstructor()) {
@@ -335,7 +292,7 @@ public final class App {
                     handleMessage(msg);
                     break;
                 default:
-                    // print("Unsupported update:" + newLine + object);
+                    break;
             }
         }
     }
