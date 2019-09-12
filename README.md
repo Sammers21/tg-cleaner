@@ -1,7 +1,13 @@
 # tg-cleaner
 Automatically cleans up things you don't want to appear in a telegram chat 
 
-# Build and run instructions
+# Docker image
+
+To run a docker image, execute:
+
+`$ docker run -it sammers/tg-cleaner:0.1`
+
+# Build and run on-host instructions
 
 1. Build tdlib, by following steps from [the instruction](https://tdlib.github.io/td/build.html?language=Java)
 2. Make it accessible in you PATH
