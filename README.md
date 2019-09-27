@@ -3,9 +3,18 @@ Automatically cleans up things you don't want to appear in a telegram chat
 
 # Docker image
 
-To run a docker image, execute:
+To run the docker image, execute:
 
-`$ docker run -it sammers/tg-cleaner:0.1`
+`$ docker run --restart always --name tg-cleaner -v /my/own/dir:/tdlib -d -it sammers/tg-cleaner:1.0`
+
+_/my/own/dir_ should be replaced with a path on your computer.
+
+Then you can enter your Telegram account: 
+
+`$ docker exec -it tg-cleaner tmux a`
+
+Input your telephone number, received code and a cloud password if needed. Then just quit terminal(NOT USING CNTRL+C).
+
 
 # Build and run on-host instructions
 
