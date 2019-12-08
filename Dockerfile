@@ -1,13 +1,14 @@
 FROM fedora:30
 
 RUN dnf install \
-    java-11-openjdk.x86_64 \
+    java-11-openjdk-11.0.5.10-0.fc30.x86_64 \
     tmux \
     -y \
     && dnf clean all \
     && dnf autoremove
 
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-11.0.4.11-0.fc30.x86_64
+RUN ls -la /usr/lib/jvm
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-11.0.5.10-0.fc30.x86_64
 
 RUN mkdir /app
 COPY . /app
