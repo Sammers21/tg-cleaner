@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 public class TGCleanerConfig {
 
+    private boolean shieldEnabled = false;
     private Set<Long> textOnlyChats = new HashSet<>();
     private Set<Long> ignoredPacks = new ConcurrentSkipListSet<>();
     private Map<Long, Set<String>> ignoredSTickers = new ConcurrentHashMap<>();
@@ -18,6 +19,18 @@ public class TGCleanerConfig {
 
     public boolean isTextOnlyChat(Long chatId) {
         return textOnlyChats.contains(chatId);
+    }
+
+    public void enableShield() {
+        shieldEnabled = true;
+    }
+
+    public void disableShield() {
+        shieldEnabled = false;
+    }
+
+    public boolean isShieldEnabled() {
+        return shieldEnabled;
     }
 
     public void ignoreSticker(Long packId, String emoji) {
