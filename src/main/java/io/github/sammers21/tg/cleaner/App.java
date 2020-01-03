@@ -43,7 +43,7 @@ public final class App {
     private static final String commandsLine = "Enter command (lo - LogOut, q - Quit): ";
     private static volatile String currentPrompt = null;
 
-    private static final CleanConfig cleanConfig = new CleanConfig();
+    private static final TGCleanerConfig cleanConfig = new TGCleanerConfig();
 
     static {
         try {

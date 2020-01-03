@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public class CleanConfig {
+public class TGCleanerConfig {
 
     private Set<Long> textOnlyChats = new HashSet<>();
     private Set<Long> ignoredPacks = new ConcurrentSkipListSet<>();
