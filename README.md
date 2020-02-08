@@ -1,11 +1,23 @@
 # tg-cleaner
-Automatically cleans up things you don't want to appear in a telegram chat 
+
+_tg-cleaner_ behaves like a telegram client on your mobile/desktop
+computer alowing you to delete anything other than a text
+messages or deleting a specific sticker in an automatic way.
+
+Reply to a sticker you want to be ignored with `#tgc_ignore` command: 
+
+![demo](https://user-images.githubusercontent.com/16746106/64022539-24a9d980-cb3f-11e9-98cb-c69d67d22214.gif)
+
+`#tgc_allow_text_only` togles text-only mode in a private chat:
+
+![allow_text_demo](https://user-images.githubusercontent.com/16746106/64022906-dcd78200-cb3f-11e9-9e61-5b282a5337c2.gif)
+
 
 # Docker image
 
 To run the docker image, execute:
 
-`$ docker run --restart always --name tg-cleaner -v /my/own/dir:/tdlib -d -it sammers/tg-cleaner:1.0`
+`$ docker run --restart always --name tg-cleaner -v $(pwd):/tdlib -d -it sammers/tg-cleaner:1.0`
 
 _/my/own/dir_ should be replaced with a path on your computer.
 
@@ -24,13 +36,3 @@ Input your telephone number, received code and a cloud password if needed. Then 
 4. Run resulted `.jar` file: `java -jar build/libs/tg-cleaner.jar` 
 5. Input your telephone number and received code.
 6. Now listed below features will work.
-
-# Features
-
-`#tgc_ignore` - ignore a specific sticker 
-
-![demo](https://user-images.githubusercontent.com/16746106/64022539-24a9d980-cb3f-11e9-98cb-c69d67d22214.gif)
-
-`#tgc_allow_text_only` - ignore anything other then a text message
-
-![allow_text_demo](https://user-images.githubusercontent.com/16746106/64022906-dcd78200-cb3f-11e9-9e61-5b282a5337c2.gif)
