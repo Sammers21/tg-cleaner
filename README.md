@@ -1,6 +1,6 @@
 # tg-cleaner
 
-_tg-cleaner_ behaves like a telegram client on your mobile/desktop
+The app behaves like a telegram client on your mobile/desktop
 computer alowing you to delete anything other than a text
 messages or deleting a specific sticker in an automatic way.
 
