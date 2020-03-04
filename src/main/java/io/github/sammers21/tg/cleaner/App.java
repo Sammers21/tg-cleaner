@@ -6,7 +6,6 @@
 //
 package io.github.sammers21.tg.cleaner;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
@@ -50,33 +49,23 @@ public final class App {
         try {
             System.loadLibrary("tdjni");
         } catch (UnsatisfiedLinkError linkError) {
+            System.out.println("Failed to load system lib: tdjni, loading from jar");
             try {
-                if (SystemUtils.IS_OS_MAC_OSX) {
-                    loadFromClasspath("/libtdjni.dylib");
-                } else if (SystemUtils.IS_OS_WINDOWS) {
-                    System.out.println("Windows is not supported");
-                } else if (SystemUtils.IS_OS_LINUX) {
-                    loadFromClasspath("/libtdjni.so");
+                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
+                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
+                if (!file.exists()) {
+                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
+                    Files.copy(link, file.getAbsoluteFile().toPath());
                 }
+                file.deleteOnExit();
+                System.out.println("Load jni lib from " + file.getAbsolutePath());
+                System.load(file.getAbsolutePath());
             } catch (IOException e) {
                 throw new IllegalStateException("Can't unpack native part", e);
             } catch (UnsatisfiedLinkError e) {
                 throw new IllegalStateException("Couldn't load library from jar", e);
             }
         }
-    }
-
-    private static void loadFromClasspath(String path) throws IOException {
-        Path tempDirWithPrefix = Files.createTempDirectory("tempload");
-        File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
-        if (!file.exists()) {
-            InputStream link = (App.class.getResourceAsStream(path));
-            Files.copy(link, file.getAbsoluteFile().toPath());
-        }
-        file.deleteOnExit();
-        System.out.println("Load jni lib from " + file.getAbsolutePath());
-        System.load(file.getAbsolutePath());
-        System.out.println("Load succeed");
     }
 
     private static void print(String str) {
@@ -113,12 +102,12 @@ public final class App {
                 break;
             case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR: {
                 String phoneNumber = promptString("Please enter phone number: ");
-                client.send(new TdApi.SetAuthenticationPhoneNumber(phoneNumber, null), new AuthorizationRequestHandler());
+                client.send(new TdApi.SetAuthenticationPhoneNumber(phoneNumber, false, false), new AuthorizationRequestHandler());
                 break;
             }
             case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR: {
                 String code = promptString("Please enter authentication code: ");
-                client.send(new TdApi.CheckAuthenticationCode(code), new AuthorizationRequestHandler());
+                client.send(new TdApi.CheckAuthenticationCode(code, "", ""), new AuthorizationRequestHandler());
                 break;
             }
             case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR: {
