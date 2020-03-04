@@ -12,7 +12,9 @@ import org.drinkless.tdlib.TdApi;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class App {
     private static Client client = null;
 
+    public static final long VOICY_USER_ID = 259276793L;
     public static String TGC_IGNORE = "#tgc_ignore";
     public static String TGC_ALLOW_TEXT_ONLY = "#tgc_allow_text_only";
     public static String TGC_VOICE_TRANSCRIPT = "#tgc_voice_transcript";
@@ -43,26 +46,27 @@ public final class App {
     private static final TGCleanerConfig cleanConfig = new TGCleanerConfig();
 
     static {
-        try {
-            System.loadLibrary("tdjni");
-        } catch (UnsatisfiedLinkError linkError) {
-            System.out.println("Failed to load system lib: tdjni, loading from jar");
-            try {
-                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
-                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
-                if (!file.exists()) {
-                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
-                    Files.copy(link, file.getAbsoluteFile().toPath());
-                }
-                file.deleteOnExit();
-                System.out.println("Load jni lib from " + file.getAbsolutePath());
-                System.load(file.getAbsolutePath());
-            } catch (IOException e) {
-                throw new IllegalStateException("Can't unpack native part", e);
-            } catch (UnsatisfiedLinkError e) {
-                throw new IllegalStateException("Couldn't load library from jar", e);
-            }
-        }
+        System.load("/Users/sammers/tdlib-java-builds/libtdjni.dylib");
+//        try {
+//            System.loadLibrary("tdjni");
+//        } catch (UnsatisfiedLinkError linkError) {
+//            System.out.println("Failed to load system lib: tdjni, loading from jar");
+//            try {
+//                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
+//                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
+//                if (!file.exists()) {
+//                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
+//                    Files.copy(link, file.getAbsoluteFile().toPath());
+//                }
+//                file.deleteOnExit();
+//                System.out.println("Load jni lib from " + file.getAbsolutePath());
+//                System.load(file.getAbsolutePath());
+//            } catch (IOException e) {
+//                throw new IllegalStateException("Can't unpack native part", e);
+//            } catch (UnsatisfiedLinkError e) {
+//                throw new IllegalStateException("Couldn't load library from jar", e);
+//            }
+//        }
     }
 
     private static void print(String str) {
@@ -99,12 +103,12 @@ public final class App {
                 break;
             case TdApi.AuthorizationStateWaitPhoneNumber.CONSTRUCTOR: {
                 String phoneNumber = promptString("Please enter phone number: ");
-                client.send(new TdApi.SetAuthenticationPhoneNumber(phoneNumber, false, false), new AuthorizationRequestHandler());
+                client.send(new TdApi.SetAuthenticationPhoneNumber(phoneNumber, null), new AuthorizationRequestHandler());
                 break;
             }
             case TdApi.AuthorizationStateWaitCode.CONSTRUCTOR: {
                 String code = promptString("Please enter authentication code: ");
-                client.send(new TdApi.CheckAuthenticationCode(code, "", ""), new AuthorizationRequestHandler());
+                client.send(new TdApi.CheckAuthenticationCode(code), new AuthorizationRequestHandler());
                 break;
             }
             case TdApi.AuthorizationStateWaitPassword.CONSTRUCTOR: {
@@ -211,7 +215,7 @@ public final class App {
     }
 
     private static void fetchConfig(String q, int offsetDate, long chat_id, long message_id) {
-        client.send(new TdApi.SearchMessages(q, offsetDate, chat_id, message_id, 100), object -> {
+        client.send(new TdApi.SearchMessages(new TdApi.ChatListMain(), q, offsetDate, chat_id, message_id, 100), object -> {
             TdApi.Messages messages = (TdApi.Messages) object;
             int length = messages.messages.length;
             fillWithMessages(messages);
@@ -286,16 +290,41 @@ public final class App {
             }
         }
     }
-    
+
     private static void voicyTranscript(TdApi.Message toFwd) {
         client.send(new TdApi.SearchPublicChat("voicybot"), object -> {
             TdApi.Chat chat = (TdApi.Chat) object;
-            client.send(new TdApi.ForwardMessages(chat.id, toFwd.chatId, new long[]{toFwd.id}, false, false, false), res -> {
-                System.out.println("Message has been forwarded");
+            voicyRespondOnChatAndMsg.set(new Map.Entry<Long, Long>() {
+                @Override
+                public Long getKey() {
+                    return toFwd.chatId;
+                }
+
+                @Override
+                public Long getValue() {
+                    return toFwd.id;
+                }
+
+                @Override
+                public Long setValue(Long value) {
+                    return null;
+                }
             });
+            client.send(
+                new TdApi.ForwardMessages(
+                    chat.id,
+                    toFwd.chatId,
+                    new long[]{toFwd.id},
+                    new TdApi.SendMessageOptions(true, false, null),
+                    false,
+                    false,
+                    false
+                ), res -> {
+                    System.out.println("Message has been forwarded " + toFwd.id);
+                });
         });
     }
-    
+
     private static class UpdatesHandler implements Client.ResultHandler {
 
         @Override
@@ -309,11 +338,42 @@ public final class App {
                     TdApi.Message msg = newMessage.message;
                     handleMessage(msg);
                     break;
+                case TdApi.UpdateChatLastMessage.CONSTRUCTOR:
+                    final TdApi.UpdateChatLastMessage message = (TdApi.UpdateChatLastMessage) object;
+                    final TdApi.MessageText text = (TdApi.MessageText) message.lastMessage.content;
+                    if (message.lastMessage.senderUserId == VOICY_USER_ID) {
+                        final String txt = text.text.text;
+                        System.out.println("Message from voicy catched: " + txt);
+                        if (txt.contains("...")) {
+                            handleNextVoicyMessage.set(true);
+                            System.out.println("Handle next voicy message");
+                            return;
+                        }
+                        if (handleNextVoicyMessage.compareAndSet(true, false)) {
+                            final Map.Entry<Long, Long> entry = voicyRespondOnChatAndMsg.get();
+                            System.out.println(String.format("Sending translation to chat: %s reply:%s, input:%s", entry.getKey(), entry.getValue(), txt));
+                            client.send(
+                                new TdApi.SendMessage(
+                                    entry.getKey(),
+                                    entry.getValue(),
+                                    null,
+                                    null,
+                                    new TdApi.InputMessageText(new TdApi.FormattedText(txt, null), false, true)
+                                ), proxyResp -> {
+                                    System.out.println("Proxyresp");
+                                }
+                            );
+                        }
+                    }
+                    break;
                 default:
                     break;
             }
         }
     }
+
+    private static final AtomicBoolean handleNextVoicyMessage = new AtomicBoolean(false);
+    private static final AtomicReference<Map.Entry<Long, Long>> voicyRespondOnChatAndMsg = new AtomicReference<>(null);
 
     private static class AuthorizationRequestHandler implements Client.ResultHandler {
         @Override

@@ -1,19 +1,20 @@
 FROM fedora:30
 
 RUN dnf install \
-    java-11-openjdk-11.0.5.10-0.fc30.x86_64 \
+    gradle \
+    java-11-openjdk \
     tmux \
     -y \
     && dnf clean all \
     && dnf autoremove
 
 RUN ls -la /usr/lib/jvm
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-11.0.5.10-0.fc30.x86_64
+ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-*
 
 RUN mkdir /app
 COPY . /app
 RUN cd /app \
-    && ./gradlew fatJar \
+    && gradle fatJar \
     && cp /app/build/libs/tg-cleaner.jar /tg-cleaner.jar \
     && rm -rf /app
 
