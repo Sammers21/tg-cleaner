@@ -1,15 +1,19 @@
-FROM fedora:30
+FROM adoptopenjdk/openjdk11:jdk-11.0.4_11-ubuntu
 
-RUN dnf install \
-    gradle \
-    java-11-openjdk \
-    tmux \
-    -y \
-    && dnf clean all \
-    && dnf autoremove
+RUN apt-get update
+RUN apt-get -y install unzip
 
-RUN ls -la /usr/lib/jvm
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-*
+RUN \
+    cd /usr/local && \
+    curl -L https://services.gradle.org/distributions/gradle-5.6.2-bin.zip -o gradle-5.6.2-bin.zip && \
+    unzip gradle-5.6.2-bin.zip && \
+    rm gradle-5.6.2-bin.zip
+
+# Export some environment variables
+ENV GRADLE_HOME=/usr/local/gradle-5.6.2
+ENV PATH=$PATH:$GRADLE_HOME/bin
+
+RUN apt-get -y install tmux
 
 RUN mkdir /app
 COPY . /app

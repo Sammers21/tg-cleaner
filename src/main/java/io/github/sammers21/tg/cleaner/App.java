@@ -285,7 +285,6 @@ public final class App {
                     }
                     break;
                 default:
-                    System.out.println("Unknown" + msg);
                     break;
             }
         }
