@@ -11,6 +11,7 @@ public class TGCleanerConfig {
     private Set<Long> textOnlyChats = new HashSet<>();
     private Set<Long> ignoredPacks = new ConcurrentSkipListSet<>();
     private Map<Long, Set<String>> ignoredSTickers = new ConcurrentHashMap<>();
+    private Map<Long, String> voiceTranscript = new ConcurrentHashMap<>();
 
     public void addTextOnlyChat(Long chat) {
         textOnlyChats.add(chat);
@@ -46,5 +47,17 @@ public class TGCleanerConfig {
         } else {
             return false;
         }
+    }
+    
+    public boolean isTranscriptEnabled(Long chatId) {
+        return voiceTranscript.containsKey(chatId);
+    }
+    
+    public String translationLanguage(Long chatId) {
+        return voiceTranscript.get(chatId);
+    }
+    
+    public void configTranscript(Long chatId, String lang) {
+        voiceTranscript.put(chatId, lang);
     }
 }

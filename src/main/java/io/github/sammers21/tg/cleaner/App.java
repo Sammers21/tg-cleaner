@@ -9,14 +9,10 @@ package io.github.sammers21.tg.cleaner;
 import org.drinkless.tdlib.Client;
 import org.drinkless.tdlib.TdApi;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOError;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -29,6 +25,7 @@ public final class App {
 
     public static String TGC_IGNORE = "#tgc_ignore";
     public static String TGC_ALLOW_TEXT_ONLY = "#tgc_allow_text_only";
+    public static String TGC_VOICE_TRANSCRIPT = "#tgc_voice_transcript";
 
     private static TdApi.AuthorizationState authorizationState = null;
     private static volatile boolean haveAuthorization = false;
@@ -124,6 +121,7 @@ public final class App {
                     authorizationLock.unlock();
                 }
                 fetchConfig(TGC_IGNORE, 0, 0, 0);
+                fetchConfig(TGC_VOICE_TRANSCRIPT, 0, 0, 0);
                 fetchConfig(TGC_ALLOW_TEXT_ONLY, 0, 0, 0);
                 break;
             case TdApi.AuthorizationStateLoggingOut.CONSTRUCTOR:
@@ -245,7 +243,6 @@ public final class App {
             });
         } else {
             switch (msgContent.getConstructor()) {
-                case TdApi.MessagePhoto.CONSTRUCTOR:
                 case TdApi.MessageSticker.CONSTRUCTOR:
                     TdApi.MessageSticker sticker = (TdApi.MessageSticker) msgContent;
                     if (cleanConfig.isStickerIgnored(sticker.sticker.setId, sticker.sticker.emoji)) {
@@ -260,7 +257,8 @@ public final class App {
                 case TdApi.MessageText.CONSTRUCTOR:
                     TdApi.MessageText text = (TdApi.MessageText) msgContent;
                     long replyToMessageId = msg.replyToMessageId;
-                    if (replyToMessageId != 0 && text.text.text.equals(TGC_IGNORE)) {
+                    String msgText = text.text.text;
+                    if (replyToMessageId != 0 && msgText.equals(TGC_IGNORE)) {
                         client.send(new TdApi.GetMessage(msg.chatId, replyToMessageId), response -> {
                             TdApi.Message message = (TdApi.Message) response;
                             TdApi.MessageContent content = message.content;
@@ -269,15 +267,35 @@ public final class App {
                                 cleanConfig.ignoreSticker(messageSticker.sticker.setId, messageSticker.sticker.emoji);
                             }
                         });
-                    } else if (text.text.text.equals(TGC_ALLOW_TEXT_ONLY)) {
+                    } else if (msgText.equals(TGC_ALLOW_TEXT_ONLY)) {
                         cleanConfig.addTextOnlyChat(msg.chatId);
+                    } else if (msgText.contains(TGC_VOICE_TRANSCRIPT)) {
+                        cleanConfig.configTranscript(msg.chatId, "ru");
                     }
+                    break;
+                case TdApi.MessageVoiceNote.CONSTRUCTOR:
+                    if (cleanConfig.isTranscriptEnabled(msg.chatId)) {
+                        String language = cleanConfig.translationLanguage(msg.chatId);
+                        System.out.println("Start translation process with lang: " + language);
+                        voicyTranscript(msg);
+                    }
+                    break;
                 default:
+                    System.out.println("Unknown" + msg);
                     break;
             }
         }
     }
-
+    
+    private static void voicyTranscript(TdApi.Message toFwd) {
+        client.send(new TdApi.SearchPublicChat("voicybot"), object -> {
+            TdApi.Chat chat = (TdApi.Chat) object;
+            client.send(new TdApi.ForwardMessages(chat.id, toFwd.chatId, new long[]{toFwd.id}, false, false, false), res -> {
+                System.out.println("Message has been forwarded");
+            });
+        });
+    }
+    
     private static class UpdatesHandler implements Client.ResultHandler {
 
         @Override
