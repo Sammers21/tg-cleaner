@@ -13,12 +13,13 @@ Reply to a sticker you want to be ignored with `#tgc_ignore` command:
 
 ![allow_text_demo](https://user-images.githubusercontent.com/16746106/64022906-dcd78200-cb3f-11e9-9e61-5b282a5337c2.gif)
 
+`#tgc_voice_transcript` - enables seamless integration with `@vociybot`. Each voice message transcribed into text.
 
 # Docker image
 
 To run the docker image, execute:
 
-`$ docker run --restart always --name tg-cleaner -v $(pwd):/tdlib -d -it sammers/tg-cleaner:1.0`
+`$ docker run --restart always --name tg-cleaner -v $(pwd):/tdlib -d -it sammers/tg-cleaner:1.1`
 
 _/my/own/dir_ should be replaced with a path on your computer.
 
