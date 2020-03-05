@@ -46,27 +46,26 @@ public final class App {
     private static final TGCleanerConfig cleanConfig = new TGCleanerConfig();
 
     static {
-        System.load("/Users/sammers/tdlib-java-builds/libtdjni.dylib");
-//        try {
-//            System.loadLibrary("tdjni");
-//        } catch (UnsatisfiedLinkError linkError) {
-//            System.out.println("Failed to load system lib: tdjni, loading from jar");
-//            try {
-//                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
-//                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
-//                if (!file.exists()) {
-//                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
-//                    Files.copy(link, file.getAbsoluteFile().toPath());
-//                }
-//                file.deleteOnExit();
-//                System.out.println("Load jni lib from " + file.getAbsolutePath());
-//                System.load(file.getAbsolutePath());
-//            } catch (IOException e) {
-//                throw new IllegalStateException("Can't unpack native part", e);
-//            } catch (UnsatisfiedLinkError e) {
-//                throw new IllegalStateException("Couldn't load library from jar", e);
-//            }
-//        }
+        try {
+            System.loadLibrary("tdjni");
+        } catch (UnsatisfiedLinkError linkError) {
+            System.out.println("Failed to load system lib: tdjni, loading from jar");
+            try {
+                Path tempDirWithPrefix = Files.createTempDirectory("tempload");
+                File file = new File(tempDirWithPrefix.toString() + System.getProperty("file.separator") + "libtdjni.so");
+                if (!file.exists()) {
+                    InputStream link = (App.class.getResourceAsStream("/libtdjni.so"));
+                    Files.copy(link, file.getAbsoluteFile().toPath());
+                }
+                file.deleteOnExit();
+                System.out.println("Load jni lib from " + file.getAbsolutePath());
+                System.load(file.getAbsolutePath());
+            } catch (IOException e) {
+                throw new IllegalStateException("Can't unpack native part", e);
+            } catch (UnsatisfiedLinkError e) {
+                throw new IllegalStateException("Couldn't load library from jar", e);
+            }
+        }
     }
 
     private static void print(String str) {
